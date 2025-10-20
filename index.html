@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>投票系统 - GitHub部署指南</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --accent-color: #4895ef;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fb;
+            color: var(--dark-color);
+            padding-top: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        
+        .card {
+            border-radius: 15px;
+            border: none;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease;
+            margin-bottom: 25px;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            border-radius: 15px 15px 0 0 !important;
+            padding: 20px;
+            font-weight: 600;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: 600;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+        }
+        
+        .vote-option {
+            padding: 15px;
+            border: 1px solid #eaeaea;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .vote-option:hover {
+            background-color: #f0f4ff;
+            border-color: var(--accent-color);
+        }
+        
+        .vote-option.selected {
+            background-color: #e6eeff;
+            border-color: var(--primary-color);
+        }
+        
+        .progress {
+            height: 25px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+        }
+        
+        .progress-bar {
+            background-color: var(--primary-color);
+            border-radius: 12px;
+        }
+        
+        .nav-tabs .nav-link {
+            color: var(--dark-color);
+            border: none;
+            padding: 12px 25px;
+            font-weight: 500;
+        }
+        
+        .nav-tabs .nav-link.active {
+            color: var(--primary-color);
+            border-bottom: 3px solid var(--primary-color);
+            background: transparent;
+        }
+        
+        .form-control, .form-select {
+            border-radius: 8px;
+            padding: 12px 15px;
+            border: 1px solid #e1e5ee;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 30px 0;
+            color: #6c757d;
+            margin-top: 50px;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        
+        .vote-count {
+            font-size: 14px;
+            color: #6c757d;
+        }
+        
+        .vote-percentage {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        .deploy-guide {
+            background-color: #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        
+        .step-number {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            margin-right: 10px;
+        }
+        
+        .screenshot {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            background: white;
+            margin: 15px 0;
+            max-width: 100%;
+        }
+        
+        .step-card {
+            margin-bottom: 30px;
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .github-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 网站标题和描述 -->
+        <div class="header text-center">
+            <h1 class="display-4 fw-bold">投票系统</h1>
+            <p class="lead">创建投票，收集意见，轻松决策</p>
+        </div>
+        
+        <!-- 导航标签 -->
+        <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="create-tab" data-bs-toggle="tab" data-bs-target="#create" type="button" role="tab" aria-controls="create" aria-selected="true">创建投票</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="vote-tab" data-bs-toggle="tab" data-bs-target="#vote" type="button" role="tab" aria-controls="vote" aria-selected="false">参与投票</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="results-tab" data-bs-toggle="tab" data-bs-target="#results" type="button" role="tab" aria-controls="results" aria-selected="false">查看结果</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="github-tab" data-bs-toggle="tab" data-bs-target="#github" type="button" role="tab" aria-controls="github" aria-selected="false">GitHub部署指南</button>
+            </li>
+        </ul>
+        
+        <!-- 标签内容 -->
+        <div class="tab-content" id="myTabContent">
+            <!-- 创建投票标签页 -->
+            <div class="tab-pane fade show active" id="create" role="tabpanel" aria-labelledby="create-tab">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+                        <div class="card">
+                            <div class="card-header">创建新投票</div>
+                            <div class="card-body">
+                                <form id="createPollForm">
+                                    <div class="mb-3">
+                                        <label for="pollTitle" class="form-label">投票标题</label>
+                                        <input type="text" class="form-control" id="pollTitle" placeholder="输入投票标题" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="pollDescription" class="form-label">投票描述（可选）</label>
+                                        <textarea class="form-control" id="pollDescription" rows="2" placeholder="输入投票描述"></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">投票选项</label>
+                                        <div id="optionsContainer">
+                                            <div class="input-group mb-2">
+                                                <input type="text" class="form-control option-input" placeholder="选项1" required>
+                                                <button type="button" class="btn btn-outline-danger remove-option" disabled>删除</button>
+                                            </div>
+                                            <div class="input-group mb-2">
+                                                <input type="text" class="form-control option-input" placeholder="选项2" required>
+                                                <button type="button" class="btn btn-outline-danger remove-option">删除</button>
+                                            </div>
+                                        </div>
+                                        <button type="button" id="addOption" class="btn btn-outline-primary btn-sm mt-2">添加选项</button>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="pollType" class="form-label">投票类型</label>
+                                        <select class="form-select" id="pollType">
+                                            <option value="single">单选</option>
+                                            <option value="multiple">多选</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="pollDeadline" class="form-label">截止时间</label>
+                                        <input type="datetime-local" class="form-control" id="pollDeadline">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary w-100">创建投票</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 参与投票标签页 -->
+            <div class="tab-pane fade" id="vote" role="tabpanel" aria-labelledby="vote-tab">
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0" id="currentPollTitle">您最喜欢的前端框架是什么？</h5>
+                                <small class="text-muted" id="currentPollDescription">请从以下选项中选择您最喜欢的前端框架</small>
+                            </div>
+                            <div class="card-body">
+                                <div id="voteOptions">
+                                    <div class="vote-option" data-option="0">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="pollOption" id="option1">
+                                            <label class="form-check-label w-100" for="option1">
+                                                React
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="vote-option" data-option="1">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="pollOption" id="option2">
+                                            <label class="form-check-label w-100" for="option2">
+                                                Vue.js
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="vote-option" data-option="2">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="pollOption" id="option3">
+                                            <label class="form-check-label w-100" for="option3">
+                                                Angular
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="vote-option" data-option="3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="pollOption" id="option4">
+                                            <label class="form-check-label w-100" for="option4">
+                                                Svelte
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button id="submitVote" class="btn btn-primary w-100 mt-3">提交投票</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card">
+                            <div class="card-header">投票列表</div>
+                            <div class="card-body p-0">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center active-poll">
+                                        <span>前端框架偏好调查</span>
+                                        <span class="badge bg-primary rounded-pill">进行中</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span>团队建设活动选择</span>
+                                        <span class="badge bg-secondary rounded-pill">已结束</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span>年度最佳员工评选</span>
+                                        <span class="badge bg-primary rounded-pill">进行中</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span>新产品功能优先级</span>
+                                        <span class="badge bg-secondary rounded-pill">已结束</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 查看结果标签页 -->
+            <div class="tab-pane fade" id="results" role="tabpanel" aria-labelledby="results-tab">
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">前端框架偏好调查结果</h5>
+                                <small class="text-muted">总投票数: <span id="totalVotes">128</span></small>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container">
+                                    <canvas id="resultsChart"></canvas>
+                                </div>
+                                <div id="resultsList" class="mt-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <strong>React</strong>
+                                            <span class="vote-count ms-2">(58票)</span>
+                                        </div>
+                                        <div class="vote-percentage">45.3%</div>
+                                    </div>
+                                    <div class="progress">
+                                        <div class="progress-bar" role="progressbar" style="width: 45.3%" aria-valuenow="45.3" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <strong>Vue.js</strong>
+                                            <span class="vote-count ms-2">(42票)</span>
+                                        </div>
+                                        <div class="vote-percentage">32.8%</div>
+                                    </div>
+                                    <div class="progress">
+                                        <div class="progress-bar" role="progressbar" style="width: 32.8%" aria-valuenow="32.8" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <strong>Angular</strong>
+                                            <span class="vote-count ms-2">(20票)</span>
+                                        </div>
+                                        <div class="vote-percentage">15.6%</div>
+                                    </div>
+                                    <div class="progress">
+                                        <div class="progress-bar" role="progressbar" style="width: 15.6%" aria-valuenow="15.6" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <strong>Svelte</strong>
+                                            <span class="vote-count ms-2">(8票)</span>
+                                        </div>
+                                        <div class="vote-percentage">6.3%</div>
+                                    </div>
+                                    <div class="progress">
+                                        <div class="progress-bar" role="progressbar" style="width: 6.3%" aria-valuenow="6.3" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card">
+                            <div class="card-header">投票统计</div>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between mb-3">
+                                    <span>总投票数:</span>
+                                    <strong>128</strong>
+                                </div>
+                                <div class="d-flex justify-content-between mb-3">
+                                    <span>创建时间:</span>
+                                    <strong>2023-05-10</strong>
+                                </div>
+                                <div class="d-flex justify-content-between mb-3">
+                                    <span>截止时间:</span>
+                                    <strong>2023-06-10</strong>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>投票状态:</span>
+                                    <strong class="text-success">进行中</strong>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mt-4">
+                            <div class="card-header">分享投票</div>
+                            <div class="card-body">
+                                <div class="input-group mb-3">
+                                    <input type="text" class="form-control" value="https://vote.example.com/poll/12345" id="shareLink">
+                                    <button class="btn btn-outline-primary" type="button" id="copyLink">复制</button>
+                                </div>
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-outline-primary">
+                                        <i class="bi bi-twitter"></i> 分享到 Twitter
+                                    </button>
+                                    <button class="btn btn-outline-primary">
+                                        <i class="bi bi-facebook"></i> 分享到 Facebook
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- GitHub部署指南标签页 -->
+            <div class="tab-pane fade" id="github" role="tabpanel" aria-labelledby="github-tab">
+                <div class="row">
+                    <div class="col-lg-12">
+                        <div class="card">
+                            <div class="card-header d-flex align-items-center">
+                                <svg class="github-icon" viewBox="0 0 16 16" fill="currentColor">
+                                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                                </svg>
+                                GitHub Pages 部署详细指南
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-info">
+                                    <strong>提示：</strong> 按照以下步骤操作，您将能够在15分钟内将投票网站部署到GitHub Pages并获得一个公开网址！
+                                </div>
+                                
+                                <div class="step-card p-4">
+                                    <h4><span class="step-number">1</span>创建GitHub账户</h4>
+                                    <p>如果您还没有GitHub账户，请先注册：</p>
+                                    <ol>
+                                        <li>访问 <a href="https://github.com" target="_blank">GitHub官网</a></li>
+                                        <li>点击右上角的"Sign up"按钮</li>
+                                        <li>按照提示填写用户名、邮箱和密码</li>
+                                        <li>完成邮箱验证</li>
+                                    </ol>
+                                    <div class="alert alert-secondary">
+                                        <strong>注意：</strong> GitHub账户是完全免费的，您不需要支付任何费用。
+                                    </div>
+                                </div>
+                                
+                                <div class="step-card p-4">
+                                    <h4><span class="step-number">2</span>创建新仓库</h4>
+                                    <ol>
+                                        <li>登录GitHub后，点击右上角的"+"号，选择"New repository"</li>
+                                        <li>输入仓库名称，例如 <code>vote-website</code></li>
+                                        <li>填写描述（可选），例如"一个简单的投票网站"</li>
+                                        <li>选择"Public"（公开）以便免费使用GitHub Pages</li>
+                                        <li>勾选"Add a README file"（可选，但建议）</li>
+                                        <li>点击"Create repository"按钮</li>
+                                    </ol>
+                                    <div class="screenshot text-center">
+                                        <p><em>仓库创建页面示意图</em></p>
+                                        <div style="background:#f6f8fa; padding:20px; border-radius:5px; text-align:left; display:inline-block;">
+                                            <p><strong>Repository name</strong>: vote-website</p>
+                                            <p><strong>Description</strong>: 一个简单的投票网站</p>
+                                            <p><strong>Public</strong> ○ Private</p>
+                                            <p>☑ Add a README file</p>
+                                            <button style="background:#2da44e; color:white; border:none; padding:5px 10px; border-radius:5px;">Create repository</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="step-card p-4">
+                                    <h4><span class="step-number">3</span>上传网站文件</h4>
+                                    <p>将投票网站代码上传到您的GitHub仓库：</p>
+                                    <ol>
+                                        <li>在仓库页面，点击"Add file" → "Upload files"</li>
+                                        <li>将本页面的HTML代码保存为<code>index.html</code>文件：
+                                            <ul>
+                                                <li>右键点击页面，选择"另存为"</li>
+                                                <li>将文件名改为<code>index.html</code></li>
+                                                <li>保存类型选择"网页，仅HTML"</li>
+                                            </ul>
+                                        </li>
+                                        <li>将保存的<code>index.html</code>文件拖拽到GitHub的上传区域</li>
+                                        <li>在提交描述中填写"添加投票网站"</li>
+                                        <li>点击"Commit changes"提交</li>
+                                    </ol>
+                                    <div class="screenshot text-center">
+                                        <p><em>文件上传页面示意图</em></p>
+                                        <div style="background:#f6f8fa; padding:20px; border-radius:5px; text-align:left; display:inline-block; width:100%; max-width:500px;">
+                                            <div style="border:2px dashed #d0d7de; padding:30px; text-align:center; margin-bottom:10px;">
+                                                将文件拖到这里或点击上传
+                                            </div>
+                                            <p><strong>Commit changes</strong></p>
+                                            <input type="text" style="width:100%; padding:5px; margin-bottom:10px;" placeholder="添加投票网站">
+                                            <button style="background:#2da44e; color:white; border:none; padding:5px 10px; border-radius:5px;">Commit changes</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="step-card p-4">
+                                    <h4><span class="step-number">4</span>启用GitHub Pages</h4>
+                                    <ol>
+                                        <li>在仓库页面，点击"Settings"选项卡</li>
+                                        <li>在左侧菜单中找到"Pages"（页面）</li>
+                                        <li>在"Source"部分，选择"Deploy from a branch"</li>
+                                        <li>选择分支（通常是<code>main</code>或<code>master</code>）</li>
+                                        <li>选择文件夹为<code>/(root)</code></li>
+                                        <li>点击"Save"保存</li>
+                                        <li>等待几分钟，页面会显示一个网址，格式为：<code>https://您的用户名.github.io/仓库名</code></li>
+                                    </ol>
+                                    <div class="screenshot text-center">
+                                        <p><em>GitHub Pages设置示意图</em></p>
+                                        <div style="background:#f6f8fa; padding:20px; border-radius:5px; text-align:left; display:inline-block; width:100%; max-width:500px;">
+                                            <p><strong>GitHub Pages</strong></p>
+                                            <p>Your site is published at <code>https://用户名.github.io/vote-website/</code></p>
+                                            <hr>
+                                            <p><strong>Source</strong></p>
+                                            <select style="width:100%; padding:5px; margin-bottom:10px;">
+                                                <option>Deploy from a branch</option>
+                                            </select>
+                                            <select style="width:100%; padding:5px; margin-bottom:10px;">
+                                                <option>main</option>
+                                            </select>
+                                            <select style="width:100%; padding:5px; margin-bottom:10px;">
+                                                <option>/(root)</option>
+                                            </select>
+                                            <button style="background:#2da44e; color:white; border:none; padding:5px 10px; border-radius:5px;">Save</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="step-card p-4">
+                                    <h4><span class="step-number">5</span>访问您的网站</h4>
+                                    <p>完成以上步骤后：</p>
+                                    <ol>
+                                        <li>打开浏览器，访问您的GitHub Pages网址</li>
+                                        <li>网址格式为：<code>https://您的用户名.github.io/vote-website</code></li>
+                                        <li>如果看到投票网站，恭喜您部署成功！</li>
+                                    </ol>
+                                    <div class="alert alert-success">
+                                        <strong>恭喜！</strong> 您的投票网站现在已经上线，可以通过互联网访问了！
+                                    </div>
+                                </div>
+                                
+                                <div class="step-card p-4">
+                                    <h4><span class="step-number">6</span>自定义域名（可选）</h4>
+                                    <p>如果您有自己的域名，可以将其指向GitHub Pages：</p>
+                                    <ol>
+                                        <li>在仓库的"Settings" → "Pages"中</li>
+                                        <li>找到"Custom domain"部分</li>
+                                        <li>输入您的域名，例如<code>vote.yourdomain.com</code></li>
+                                        <li>点击"Save"</li>
+                                        <li>在您的域名注册商处添加CNAME记录，指向<code>您的用户名.github.io</code></li>
+                                    </ol>
+                                    <div class="alert alert-warning">
+                                        <strong>注意：</strong> 自定义域名需要您已经拥有一个域名，并且知道如何配置DNS记录。
+                                    </div>
+                                </div>
+                                
+                                <div class="step-card p-4">
+                                    <h4>常见问题解答</h4>
+                                    <div class="accordion" id="faqAccordion">
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header" id="faq1">
+                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#answer1" aria-expanded="false" aria-controls="answer1">
+                                                    网站显示404错误怎么办？
+                                                </button>
+                                            </h2>
+                                            <div id="answer1" class="accordion-collapse collapse" aria-labelledby="faq1" data-bs-parent="#faqAccordion">
+                                                <div class="accordion-body">
+                                                    请检查：1) 文件名是否为<code>index.html</code>；2) 文件是否在仓库的根目录；3) GitHub Pages设置是否正确。
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header" id="faq2">
+                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#answer2" aria-expanded="false" aria-controls="answer2">
+                                                    更新网站内容后为什么没有变化？
+                                                </button>
+                                            </h2>
+                                            <div id="answer2" class="accordion-collapse collapse" aria-labelledby="faq2" data-bs-parent="#faqAccordion">
+                                                <div class="accordion-body">
+                                                    GitHub Pages需要几分钟时间构建和部署更改。如果超过10分钟仍无变化，请检查您的提交是否成功。
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header" id="faq3">
+                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#answer3" aria-expanded="false" aria-controls="answer3">
+                                                    可以使用私有仓库吗？
+                                                </button>
+                                            </h2>
+                                            <div id="answer3" class="accordion-collapse collapse" aria-labelledby="faq3" data-bs-parent="#faqAccordion">
+                                                <div class="accordion-body">
+                                                    可以，但私有仓库的GitHub Pages功能是GitHub Pro的付费功能。免费账户只能使用公开仓库的GitHub Pages。
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="text-center mt-4">
+                                    <a href="https://github.com" target="_blank" class="btn btn-primary btn-lg">开始使用GitHub</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>© 2023 投票系统 | 轻松创建和管理投票 | <a href="#github" onclick="document.getElementById('github-tab').click()">GitHub部署指南</a></p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 初始化示例数据
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化图表
+            const ctx = document.getElementById('resultsChart').getContext('2d');
+            const resultsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['React', 'Vue.js', 'Angular', 'Svelte'],
+                    datasets: [{
+                        label: '票数',
+                        data: [58, 42, 20, 8],
+                        backgroundColor: [
+                            'rgba(67, 97, 238, 0.7)',
+                            'rgba(63, 55, 201, 0.7)',
+                            'rgba(72, 149, 239, 0.7)',
+                            'rgba(106, 76, 219, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(67, 97, 238, 1)',
+                            'rgba(63, 55, 201, 1)',
+                            'rgba(72, 149, 239, 1)',
+                            'rgba(106, 76, 219, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 添加选项功能
+            document.getElementById('addOption').addEventListener('click', function() {
+                const optionsContainer = document.getElementById('optionsContainer');
+                const optionCount = optionsContainer.children.length + 1;
+                const newOption = document.createElement('div');
+                newOption.className = 'input-group mb-2';
+                newOption.innerHTML = `
+                    <input type="text" class="form-control option-input" placeholder="选项${optionCount}" required>
+                    <button type="button" class="btn btn-outline-danger remove-option">删除</button>
+                `;
+                optionsContainer.appendChild(newOption);
+                
+                // 更新删除按钮状态
+                updateRemoveButtons();
+            });
+            
+            // 删除选项功能
+            document.getElementById('optionsContainer').addEventListener('click', function(e) {
+                if (e.target.classList.contains('remove-option')) {
+                    if (document.getElementById('optionsContainer').children.length > 2) {
+                        e.target.closest('.input-group').remove();
+                        updateRemoveButtons();
+                    }
+                }
+            });
+            
+            // 更新删除按钮状态（至少保留两个选项）
+            function updateRemoveButtons() {
+                const removeButtons = document.querySelectorAll('.remove-option');
+                removeButtons.forEach(button => {
+                    button.disabled = document.getElementById('optionsContainer').children.length <= 2;
+                });
+            }
+            
+            // 投票选项选择效果
+            document.querySelectorAll('.vote-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    const input = this.querySelector('input');
+                    
+                    // 如果是单选，先取消所有选择
+                    if (input.type === 'radio') {
+                        document.querySelectorAll('.vote-option').forEach(opt => {
+                            opt.classList.remove('selected');
+                        });
+                    }
+                    
+                    // 切换当前选项的选择状态
+                    if (input.type === 'checkbox') {
+                        input.checked = !input.checked;
+                    } else {
+                        input.checked = true;
+                    }
+                    
+                    // 更新UI状态
+                    if (input.checked) {
+                        this.classList.add('selected');
+                    } else {
+                        this.classList.remove('selected');
+                    }
+                });
+            });
+            
+            // 提交投票
+            document.getElementById('submitVote').addEventListener('click', function() {
+                const selectedOptions = document.querySelectorAll('input[name="pollOption"]:checked');
+                if (selectedOptions.length === 0) {
+                    alert('请至少选择一个选项！');
+                    return;
+                }
+                
+                // 在实际应用中，这里应该发送AJAX请求到服务器
+                alert('投票提交成功！感谢您的参与。');
+                
+                // 切换到结果标签页
+                document.getElementById('results-tab').click();
+            });
+            
+            // 复制分享链接
+            document.getElementById('copyLink').addEventListener('click', function() {
+                const shareLink = document.getElementById('shareLink');
+                shareLink.select();
+                document.execCommand('copy');
+                alert('链接已复制到剪贴板！');
+            });
+            
+            // 创建投票表单提交
+            document.getElementById('createPollForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const title = document.getElementById('pollTitle').value;
+                const options = Array.from(document.querySelectorAll('.option-input')).map(input => input.value);
+                
+                // 在实际应用中，这里应该发送AJAX请求到服务器
+                alert(`投票 "${title}" 创建成功！选项: ${options.join(', ')}`);
+                
+                // 重置表单
+                this.reset();
+                
+                // 重置选项
+                const optionsContainer = document.getElementById('optionsContainer');
+                optionsContainer.innerHTML = `
+                    <div class="input-group mb-2">
+                        <input type="text" class="form-control option-input" placeholder="选项1" required>
+                        <button type="button" class="btn btn-outline-danger remove-option" disabled>删除</button>
+                    </div>
+                    <div class="input-group mb-2">
+                        <input type="text" class="form-control option-input" placeholder="选项2" required>
+                        <button type="button" class="btn btn-outline-danger remove-option">删除</button>
+                    </div>
+                `;
+                
+                updateRemoveButtons();
+            });
+        });
+    </script>
+</body>
+</html>
